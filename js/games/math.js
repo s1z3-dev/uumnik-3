@@ -374,6 +374,7 @@ const UmnikMath = (() => {
     const settings = window.UmnikPuzzles.mathSettings[activeDifficulty];
     const mascot = window.UmnikCharacters.get("smetachko");
     const avatarHtml = mascot ? mascot.getAvatarSvg("w-14 h-14") : "🤖";
+    const isMuted = window.UmnikAudio ? window.UmnikAudio.isMuted() : true;
 
     // Set font sizes depending on problem length (word problems vs basic formula)
     let problemClass = "text-4xl md:text-5xl font-black text-slate-800 tracking-wider text-center py-4 font-mono select-none";
@@ -453,6 +454,37 @@ const UmnikMath = (() => {
 
         <!-- Unified Input Panel Container -->
         <div id="unified-input-panel-container"></div>
+
+        <!-- Helpers Dropdown Menu at the End of the Page -->
+        <div class="max-w-lg mx-auto w-full mt-2">
+          <details class="group bg-white rounded-[24px] border-4 border-[#CBD5E0] shadow-md overflow-hidden transition-all duration-300">
+            <summary class="flex items-center justify-between p-4 font-black text-slate-800 uppercase tracking-tight text-sm md:text-base cursor-pointer select-none hover:bg-slate-50 active:bg-slate-100 list-none [&::-webkit-details-marker]:hidden">
+              <span class="flex items-center gap-2">⚙️ Помощници и настройки</span>
+              <span class="transition-transform duration-300 group-open:rotate-180">▼</span>
+            </summary>
+            <div class="p-5 border-t-4 border-[#CBD5E0] flex flex-col gap-5 bg-slate-50/50">
+              <!-- Sound Toggle -->
+              <label class="flex items-center justify-between gap-4 p-3 bg-white border border-slate-200 rounded-2xl cursor-pointer select-none shadow-sm">
+                <div>
+                  <h4 class="font-black text-slate-800 text-xs md:text-sm">Звукови ефекти</h4>
+                  <p class="text-slate-500 text-[11px] md:text-xs">Включи симпатичните звукови ефекти при игра.</p>
+                </div>
+                <div class="relative inline-block w-11 h-6">
+                  <input type="checkbox" id="toggle-math-sound" class="peer sr-only" ${!isMuted ? "checked" : ""}>
+                  <div class="w-11 h-6 bg-slate-200 rounded-full peer-checked:bg-emerald-500 transition-all after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-5"></div>
+                </div>
+              </label>
+
+              <!-- Prompt on how to play -->
+              <div class="p-4 bg-emerald-50 rounded-2xl border-2 border-emerald-200 flex items-start gap-2.5">
+                <span class="text-lg">⭐</span>
+                <p class="text-[11px] md:text-xs text-emerald-800 leading-relaxed font-bold">
+                  <strong>Как се играе:</strong> Пресметни математическата задача, въведи верния отговор в полето и натисни бутона "Провери!". Попълни правилно всички 10 задачи, за да спечелиш златна звезда!
+                </p>
+              </div>
+            </div>
+          </details>
+        </div>
       </div>
 
       <!-- Confirmation Modal -->
@@ -520,6 +552,22 @@ const UmnikMath = (() => {
       document.getElementById("math-confirm-modal").classList.add("hidden");
       init(containerId, activeDifficulty);
     });
+
+    // Sound Toggle Switch
+    const soundToggle = document.getElementById("toggle-math-sound");
+    if (soundToggle) {
+      soundToggle.addEventListener("change", (e) => {
+        if (window.UmnikAudio) {
+          window.UmnikAudio.setMute(!e.target.checked);
+          if (e.target.checked) {
+            window.UmnikAudio.playPop();
+          }
+          if (window.UmnikApp && window.UmnikApp.renderStickyControls) {
+            window.UmnikApp.renderStickyControls();
+          }
+        }
+      });
+    }
 
     // 5. Submit Action
     submitEl.addEventListener("click", () => {

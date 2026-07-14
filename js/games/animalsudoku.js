@@ -470,6 +470,7 @@ const UmnikAnimalSudoku = (() => {
 
     const mascot = window.UmnikCharacters ? window.UmnikCharacters.get("umko") : null;
     const avatarHtml = mascot ? mascot.getAvatarSvg("w-14 h-14") : "🦉";
+    const isMuted = window.UmnikAudio ? window.UmnikAudio.isMuted() : true;
 
     const gridColsClass = activePuzzle.size === 6 ? "grid-cols-6" : "grid-cols-9";
 
@@ -535,6 +536,18 @@ const UmnikAnimalSudoku = (() => {
                 </div>
                 <div class="relative inline-block w-11 h-6">
                   <input type="checkbox" id="toggle-asd-errors" class="peer sr-only" ${showErrors ? "checked" : ""}>
+                  <div class="w-11 h-6 bg-slate-200 rounded-full peer-checked:bg-emerald-500 transition-all after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-5"></div>
+                </div>
+              </label>
+
+              <!-- Sound Toggle -->
+              <label class="flex items-center justify-between gap-4 p-3 bg-white border border-slate-200 rounded-2xl cursor-pointer select-none shadow-sm">
+                <div>
+                  <h4 class="font-black text-slate-800 text-xs md:text-sm">Звукови ефекти</h4>
+                  <p class="text-slate-500 text-[11px] md:text-xs">Включи симпатичните звукови ефекти при игра.</p>
+                </div>
+                <div class="relative inline-block w-11 h-6">
+                  <input type="checkbox" id="toggle-asd-sound" class="peer sr-only" ${!isMuted ? "checked" : ""}>
                   <div class="w-11 h-6 bg-slate-200 rounded-full peer-checked:bg-emerald-500 transition-all after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-5"></div>
                 </div>
               </label>
@@ -641,6 +654,19 @@ const UmnikAnimalSudoku = (() => {
       if (window.UmnikAudio) window.UmnikAudio.playPop();
       showErrors = e.target.checked;
       updateGridDisplay();
+    });
+
+    // 8b. Sound Toggle Switch
+    document.getElementById("toggle-asd-sound").addEventListener("change", (e) => {
+      if (window.UmnikAudio) {
+        window.UmnikAudio.setMute(!e.target.checked);
+        if (e.target.checked) {
+          window.UmnikAudio.playPop();
+        }
+        if (window.UmnikApp && window.UmnikApp.renderStickyControls) {
+          window.UmnikApp.renderStickyControls();
+        }
+      }
     });
 
     // 9. Keyboard controls (1-size and backspace/delete/0)

@@ -6,14 +6,18 @@
 
 const UmnikAudio = (() => {
   let audioCtx = null;
-  let isMuted = false;
+  let isMuted = true;
 
-  // Load initial mute state from safe storage
+  // Load initial mute state from safe storage (off/muted by default)
   try {
     const savedMute = window.UmnikStorage ? window.UmnikStorage.getItem('umnik_mute') : null;
-    isMuted = savedMute === 'true';
+    if (savedMute !== null) {
+      isMuted = savedMute === 'true';
+    } else {
+      isMuted = true; // Off by default
+    }
   } catch (e) {
-    isMuted = false;
+    isMuted = true;
   }
 
   // Lazy initialize AudioContext on user interaction to comply with browser autoplay policies

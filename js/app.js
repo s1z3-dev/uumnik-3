@@ -606,7 +606,8 @@ const UmnikApp = (() => {
       renderCurrentScreen();
     },
     goBack,
-    navigateTo
+    navigateTo,
+    renderStickyControls
   };
 })();
 
