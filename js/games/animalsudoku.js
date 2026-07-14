@@ -1,0 +1,682 @@
+/**
+ * Umnik Animal Sudoku Game Engine (6x6)
+ * A tailored educational game focused on animal emojis in a 6x6 grid.
+ * Provides selected cell highlighting, conflict marking (red highlights),
+ * helper hints (up to 3 per game), custom animal selection pads, and confirmation modals.
+ */
+
+const UmnikAnimalSudoku = (() => {
+  let activePuzzle = null;
+  let activeDifficulty = "easy";
+  let gridState = []; // 2D array of current player values
+  let selectedCell = { row: -1, col: -1 };
+  let hintCount = 3;
+  let showErrors = true; // kid-friendly toggle to highlight conflicts in red
+  let isGameWon = false;
+
+  // Procedural Sudoku Solved Board Generator (relabeling and shuffling)
+  const generateSudokuBoard = (size) => {
+    let base;
+    let boxWidth, boxHeight;
+    if (size === 6) {
+      boxWidth = 3;
+      boxHeight = 2;
+      base = [
+        [1, 2, 3, 4, 5, 6],
+        [4, 5, 6, 1, 2, 3],
+        [2, 3, 4, 5, 6, 1],
+        [5, 6, 1, 2, 3, 4],
+        [3, 4, 5, 6, 1, 2],
+        [6, 1, 2, 3, 4, 5]
+      ];
+    } else {
+      // 9x9
+      boxWidth = 3;
+      boxHeight = 3;
+      base = [
+        [1, 2, 3, 4, 5, 6, 7, 8, 9],
+        [4, 5, 6, 7, 8, 9, 1, 2, 3],
+        [7, 8, 9, 1, 2, 3, 4, 5, 6],
+        [2, 3, 1, 5, 6, 4, 8, 9, 7],
+        [5, 6, 4, 8, 9, 7, 2, 3, 1],
+        [8, 9, 7, 2, 3, 1, 5, 6, 4],
+        [3, 1, 2, 6, 4, 5, 9, 7, 8],
+        [6, 4, 5, 9, 7, 8, 3, 1, 2],
+        [9, 7, 8, 3, 1, 2, 6, 4, 5]
+      ];
+    }
+
+    let grid = base.map(row => [...row]);
+
+    // 1. Swap digits (relabeling digits 1..size)
+    const digits = Array.from({ length: size }, (_, i) => i + 1);
+    for (let i = size - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [digits[i], digits[j]] = [digits[j], digits[i]];
+    }
+    for (let r = 0; r < size; r++) {
+      for (let c = 0; c < size; c++) {
+        grid[r][c] = digits[grid[r][c] - 1];
+      }
+    }
+
+    // 2. Swap rows within block bands
+    for (let b = 0; b < size; b += boxHeight) {
+      const indices = Array.from({ length: boxHeight }, (_, i) => b + i);
+      for (let i = boxHeight - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [indices[i], indices[j]] = [indices[j], indices[i]];
+      }
+      const origRows = indices.map(idx => [...grid[idx]]);
+      for (let i = 0; i < boxHeight; i++) {
+        grid[b + i] = origRows[i];
+      }
+    }
+
+    // 3. Swap columns within block columns
+    for (let b = 0; b < size; b += boxWidth) {
+      const indices = Array.from({ length: boxWidth }, (_, i) => b + i);
+      for (let i = boxWidth - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [indices[i], indices[j]] = [indices[j], indices[i]];
+      }
+      for (let r = 0; r < size; r++) {
+        const origRow = [...grid[r]];
+        for (let i = 0; i < boxWidth; i++) {
+          grid[r][b + i] = origRow[indices[i]];
+        }
+      }
+    }
+
+    // 4. Random transpositions
+    if (Math.random() < 0.5) {
+      const transposed = Array.from({ length: size }, () => Array(size).fill(0));
+      for (let r = 0; r < size; r++) {
+        for (let c = 0; c < size; c++) {
+          transposed[c][r] = grid[r][c];
+        }
+      }
+      grid = transposed;
+    }
+
+    return grid;
+  };
+
+  // Procedural Empty Cells Cleaver
+  const createPuzzleGrid = (solution, size, difficulty) => {
+    const start = solution.map(row => [...row]);
+    let cellsToRemove;
+    if (size === 6) {
+      if (difficulty === "easy") {
+        cellsToRemove = 12 + Math.floor(Math.random() * 3); // 12-14 empty cells
+      } else if (difficulty === "medium") {
+        cellsToRemove = 16 + Math.floor(Math.random() * 4); // 16-19 empty cells
+      } else {
+        cellsToRemove = 21 + Math.floor(Math.random() * 3); // 21-23 empty cells
+      }
+    } else {
+      // 9x9
+      if (difficulty === "easy") {
+        cellsToRemove = 30 + Math.floor(Math.random() * 5); // 30-34 empty cells
+      } else if (difficulty === "medium") {
+        cellsToRemove = 40 + Math.floor(Math.random() * 5); // 40-44 empty cells
+      } else {
+        cellsToRemove = 50 + Math.floor(Math.random() * 6); // 50-55 empty cells
+      }
+    }
+
+    const positions = [];
+    for (let r = 0; r < size; r++) {
+      for (let c = 0; c < size; c++) {
+        positions.push({ r, c });
+      }
+    }
+
+    for (let i = positions.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [positions[i], positions[j]] = [positions[j], positions[i]];
+    }
+
+    for (let i = 0; i < cellsToRemove; i++) {
+      const pos = positions[i];
+      start[pos.r][pos.c] = 0;
+    }
+
+    return start;
+  };
+
+  // Setup UI elements inside a container
+  const init = (containerId, difficulty = "easy") => {
+    activeDifficulty = difficulty;
+    hintCount = 3;
+    isGameWon = false;
+    
+    const list = window.UmnikPuzzles ? window.UmnikPuzzles.animalsudoku[difficulty] : [];
+    if (!list || list.length === 0) {
+      document.getElementById(containerId).innerHTML = "<div class='text-center p-6 text-red-500'>Възникна грешка при зареждане на играта!</div>";
+      return;
+    }
+
+    // Pick a random template puzzle to keep dynamic animal sets
+    let availableTemplates = list;
+    if (activePuzzle && list.length > 1) {
+      availableTemplates = list.filter(p => p.id !== activePuzzle.id);
+    }
+    const randomIndex = Math.floor(Math.random() * availableTemplates.length);
+    const template = availableTemplates[randomIndex];
+    
+    // Deep copy template structure
+    activePuzzle = JSON.parse(JSON.stringify(template));
+
+    // Generatively build unique solved and starting boards
+    const solutionGrid = generateSudokuBoard(activePuzzle.size);
+    const startGrid = createPuzzleGrid(solutionGrid, activePuzzle.size, activeDifficulty);
+
+    activePuzzle.solution = solutionGrid;
+    activePuzzle.start = startGrid;
+
+    // Initialize gridState from puzzle starting layout
+    gridState = activePuzzle.start.map(row => [...row]);
+    
+    // Find first empty cell to select initially
+    selectedCell = { row: -1, col: -1 };
+    let found = false;
+    for (let r = 0; r < activePuzzle.size; r++) {
+      for (let c = 0; c < activePuzzle.size; c++) {
+        if (gridState[r][c] === 0) {
+          selectedCell = { row: r, col: c };
+          found = true;
+          break;
+        }
+      }
+      if (found) break;
+    }
+
+    if (selectedCell.row === -1) {
+      selectedCell = { row: 0, col: 0 };
+    }
+
+    render(containerId);
+  };
+
+  // Safe checks
+  const isCellImmutable = (row, col) => {
+    return activePuzzle.start[row][col] !== 0;
+  };
+
+  // Provide a hint
+  const triggerHint = () => {
+    if (hintCount <= 0) return;
+
+    // Find all empty or incorrect cells
+    const targetCells = [];
+    for (let r = 0; r < activePuzzle.size; r++) {
+      for (let c = 0; c < activePuzzle.size; c++) {
+        if (!isCellImmutable(r, c) && gridState[r][c] !== activePuzzle.solution[r][c]) {
+          targetCells.push({ r, c });
+        }
+      }
+    }
+
+    if (targetCells.length === 0) return; // Already solved or perfect
+
+    // Choose random incorrect/empty cell
+    const randomCell = targetCells[Math.floor(Math.random() * targetCells.length)];
+    const correctVal = activePuzzle.solution[randomCell.r][randomCell.c];
+    
+    gridState[randomCell.r][randomCell.c] = correctVal;
+    hintCount--;
+
+    if (window.UmnikAudio) window.UmnikAudio.playSparkle();
+
+    // Update UI
+    document.getElementById("btn-asd-hint-label").innerText = `💡 Подсказака (${hintCount})`;
+    if (hintCount <= 0) {
+      document.getElementById("btn-asd-hint").disabled = true;
+      document.getElementById("btn-asd-hint").classList.add("opacity-50", "cursor-not-allowed");
+    }
+
+    // Re-render cell values
+    updateGridDisplay();
+    checkSudokuComplete();
+  };
+
+  const updateGridDisplay = () => {
+    for (let r = 0; r < activePuzzle.size; r++) {
+      for (let c = 0; c < activePuzzle.size; c++) {
+        const cellEl = document.getElementById(`asd_cell_${r}_${c}`);
+        if (!cellEl) continue;
+
+        // Clear all potential background, text, and border state classes to prevent Tailwind cascade conflicts
+        cellEl.classList.remove(
+          "bg-white",
+          "bg-amber-50",
+          "bg-amber-200",
+          "bg-amber-100/50",
+          "bg-rose-100",
+          "text-rose-500",
+          "text-indigo-700",
+          "text-slate-900",
+          "ring-2",
+          "ring-amber-400"
+        );
+
+        const val = gridState[r][c];
+        const displayVal = val > 0 ? activePuzzle.symbols[val - 1] : "";
+
+        const valSpan = cellEl.querySelector(".asd-val-span");
+        if (valSpan) {
+          valSpan.innerText = displayVal;
+        }
+
+        const isImmutable = isCellImmutable(r, c);
+
+        // Apply the single correct style block deterministically
+        if (r === selectedCell.row && c === selectedCell.col) {
+          cellEl.classList.add("bg-amber-200", "ring-2", "ring-amber-400");
+          cellEl.classList.add(isImmutable ? "text-slate-900" : "text-indigo-700");
+        } else if (!isImmutable && showErrors && val > 0 && val !== activePuzzle.solution[r][c]) {
+          cellEl.classList.add("text-rose-500", "bg-rose-100");
+        } else if (r === selectedCell.row || c === selectedCell.col) {
+          cellEl.classList.add("bg-amber-100/50");
+          cellEl.classList.add(isImmutable ? "text-slate-900" : "text-indigo-700");
+        } else {
+          if (isImmutable) {
+            cellEl.classList.add("bg-amber-50", "text-slate-900");
+          } else {
+            cellEl.classList.add("bg-white", "text-indigo-700");
+          }
+        }
+      }
+    }
+  };
+
+  // Apply value selection
+  const setCellValue = (value) => {
+    if (selectedCell.row === -1 || selectedCell.col === -1) return;
+    if (isCellImmutable(selectedCell.row, selectedCell.col)) return;
+
+    gridState[selectedCell.row][selectedCell.col] = value;
+
+    if (window.UmnikAudio) window.UmnikAudio.playPop();
+    
+    updateGridDisplay();
+    checkSudokuComplete();
+  };
+
+  const checkSudokuComplete = () => {
+    if (isGameWon) return;
+
+    let completed = true;
+    for (let r = 0; r < activePuzzle.size; r++) {
+      for (let c = 0; c < activePuzzle.size; c++) {
+        if (gridState[r][c] !== activePuzzle.solution[r][c]) {
+          completed = false;
+          break;
+        }
+      }
+      if (!completed) break;
+    }
+
+    if (completed) {
+      isGameWon = true;
+      triggerVictory();
+    }
+  };
+
+  const triggerVictory = () => {
+    if (window.UmnikAudio) window.UmnikAudio.playLevelComplete();
+
+    let rewardStars = 5;
+    if (activeDifficulty === "medium") rewardStars = 10;
+    if (activeDifficulty === "hard") rewardStars = 15;
+    if (activeDifficulty === "expert") rewardStars = 20;
+
+    let newBadges = [];
+    if (window.UmnikProgress) {
+      newBadges = window.UmnikProgress.recordGameComplete("animalsudoku", activePuzzle.id, rewardStars);
+    }
+
+    // Render Victory Overlay Modal
+    const overlay = document.createElement("div");
+    overlay.className = "fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 animate-fade-in";
+    
+    const mascot = window.UmnikCharacters ? window.UmnikCharacters.get("umko") : null;
+    const quotes = [
+      "Ти си истински приятел на животните!",
+      "Великолепен зоолог! Твоят ум е страхотен!",
+      "Чудесно решение! Всички горски животни ти благодарят!"
+    ];
+    const quote = quotes[Math.floor(Math.random() * quotes.length)];
+    const avatarHtml = mascot ? mascot.getAvatarSvg("w-28 h-28 mx-auto") : "🦉";
+
+    let badgeNotificationHtml = "";
+    if (newBadges.length > 0) {
+      newBadges.forEach(bId => {
+        const badge = window.UmnikProgress.getBadgeInfo(bId);
+        if (badge) {
+          badgeNotificationHtml += `
+            <div class="mt-4 p-3 bg-[#FEF3C7] rounded-2xl flex items-center gap-3 border border-amber-200 animate-bounce">
+              <span class="text-3xl">${badge.icon}</span>
+              <div class="text-left">
+                <p class="text-xs text-amber-500 font-bold">Нова значка!</p>
+                <p class="text-sm font-bold text-amber-900">${badge.title}</p>
+              </div>
+            </div>
+          `;
+        }
+      });
+    }
+
+    overlay.innerHTML = `
+      <div class="bg-white rounded-[40px] p-8 max-w-md w-full text-center border-8 border-emerald-400 shadow-2xl relative overflow-hidden transform scale-100 transition-transform animate-fade-in">
+        <div class="absolute -top-10 -left-10 w-24 h-24 bg-emerald-50 rounded-full opacity-40 blur-xl"></div>
+        
+        <div class="mb-4 bg-emerald-50 p-3 rounded-3xl border-2 border-emerald-200 inline-block">${avatarHtml}</div>
+        
+        <h2 class="text-2xl font-black text-emerald-950 uppercase tracking-tight mb-2">Кралят на животните!</h2>
+        
+        <p class="text-emerald-900 bg-emerald-50 p-4 rounded-2xl border-2 border-emerald-200 mb-6 font-bold leading-relaxed">
+          "${quote}"
+        </p>
+
+        <div class="flex items-center justify-center gap-2 mb-6">
+          <div class="text-center bg-emerald-100 px-5 py-3 rounded-2xl border-4 border-emerald-400 shadow-md select-none">
+            <span class="text-xl font-black text-emerald-800 leading-none">+${rewardStars} Звезди</span>
+            <span class="text-2xl">⭐</span>
+          </div>
+        </div>
+
+        ${badgeNotificationHtml}
+
+        <button id="btn-asd-victory-close" class="w-full py-4 bg-emerald-500 hover:bg-emerald-600 border-4 border-slate-800 text-white font-black text-lg rounded-2xl shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all cursor-pointer">
+          Страхотно, благодаря!
+        </button>
+      </div>
+    `;
+
+    document.body.appendChild(overlay);
+
+    document.getElementById("btn-asd-victory-close").addEventListener("click", () => {
+      if (window.UmnikAudio) window.UmnikAudio.playPop();
+      overlay.remove();
+      if (window.UmnikApp) window.UmnikApp.goBack();
+    });
+  };
+
+  const render = (containerId) => {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+
+    let gridCellsHtml = "";
+    for (let r = 0; r < activePuzzle.size; r++) {
+      for (let c = 0; c < activePuzzle.size; c++) {
+        const val = gridState[r][c];
+        const isImmutable = isCellImmutable(r, c);
+        const displayVal = val > 0 ? activePuzzle.symbols[val - 1] : "";
+
+        // Detect box borders
+        let borders = "border border-amber-200";
+        if (activePuzzle.size === 6) {
+          if (r === 1 || r === 3) borders += " border-b-4 border-b-amber-500";
+          if (c === 2) borders += " border-r-4 border-r-amber-500";
+        } else {
+          // 9x9
+          if (r === 2 || r === 5) borders += " border-b-4 border-b-amber-500";
+          if (c === 2 || c === 5) borders += " border-r-4 border-r-amber-500";
+        }
+
+        const bgClass = isImmutable ? "bg-amber-50 font-black text-slate-900" : "bg-white font-black text-indigo-700";
+        const fontSizeClass = activePuzzle.size === 6 ? "text-2xl md:text-3xl" : "text-xl md:text-2xl";
+
+        gridCellsHtml += `
+          <div 
+            class="asd-cell-box aspect-square relative flex items-center justify-center select-none cursor-pointer rounded-2xl transition-all ${borders} ${bgClass} ${fontSizeClass}"
+            data-row="${r}"
+            data-col="${c}"
+            id="asd_cell_${r}_${c}"
+          >
+            <span class="asd-val-span">${displayVal}</span>
+          </div>
+        `;
+      }
+    }
+
+    // Animal selector pad
+    let numberPadHtml = "";
+    
+    // Eraser button first
+    numberPadHtml += `
+      <button 
+        class="asd-pad-key w-14 h-14 md:w-16 md:h-16 bg-rose-50 border-4 border-rose-300 rounded-2xl flex items-center justify-center font-black text-xl shadow-md active:translate-y-0.5 transition-all select-none cursor-pointer hover:bg-rose-100"
+        data-val="0"
+        title="Изтрий"
+      >
+        ❌
+      </button>
+    `;
+
+    for (let i = 1; i <= activePuzzle.size; i++) {
+      const displaySym = activePuzzle.symbols[i - 1];
+      numberPadHtml += `
+        <button 
+          class="asd-pad-key w-14 h-14 md:w-16 md:h-16 bg-white border-4 border-emerald-300 rounded-2xl flex items-center justify-center font-black text-2xl md:text-3xl shadow-md active:translate-y-0.5 transition-all select-none cursor-pointer hover:bg-emerald-50"
+          data-val="${i}"
+        >
+          ${displaySym}
+        </button>
+      `;
+    }
+
+    const mascot = window.UmnikCharacters ? window.UmnikCharacters.get("umko") : null;
+    const avatarHtml = mascot ? mascot.getAvatarSvg("w-14 h-14") : "🦉";
+
+    const gridColsClass = activePuzzle.size === 6 ? "grid-cols-6" : "grid-cols-9";
+
+    container.innerHTML = `
+      <div class="flex flex-col gap-6 max-w-5xl mx-auto">
+        <!-- Header Controls -->
+        <div class="flex flex-wrap items-center justify-between gap-4 bg-white p-4 rounded-[32px] border-4 border-amber-400 shadow-sm">
+          <div class="flex items-center gap-3">
+            <button id="btn-asd-back" class="px-5 py-2 bg-[#EDF2F7] border-4 border-[#CBD5E0] text-[#2D3748] font-black rounded-2xl hover:bg-gray-100 active:translate-y-1 transition-all cursor-pointer flex items-center gap-1.5 touch-target">
+              ← Назад
+            </button>
+            <div>
+              <span class="text-[10px] font-bold text-amber-600 uppercase tracking-wide leading-none mb-1 block">Судоку с Животни</span>
+              <h1 class="text-lg md:text-xl font-black text-slate-800 uppercase tracking-tight leading-none">${activePuzzle.title}</h1>
+            </div>
+          </div>
+          <div class="flex items-center gap-2">
+            <button id="btn-asd-regenerate" class="px-5 py-2 bg-[#FEF3C7] text-[#D97706] hover:bg-[#FBBF24] hover:text-amber-950 border-2 border-[#FBBF24] active:scale-95 rounded-2xl font-black text-sm transition-all cursor-pointer flex items-center gap-1.5 shadow-sm touch-target">
+              🔄 Нова игра
+            </button>
+          </div>
+        </div>
+
+        <!-- Main Workspace -->
+        <div class="flex flex-col items-center justify-center bg-white p-4 md:p-6 rounded-[32px] border-4 border-[#d33434] shadow-md max-w-lg mx-auto w-full">
+          <!-- Board container -->
+          <div class="w-full max-w-sm md:max-w-md aspect-square grid ${gridColsClass} gap-1.5 border-4 border-amber-600 bg-[#c7cefe] p-2.5 rounded-3xl shadow-md">
+            ${gridCellsHtml}
+          </div>
+        </div>
+
+        <!-- Unified Input Panel Container -->
+        <div id="unified-input-panel-container"></div>
+
+        <!-- Helpers Dropdown Menu at the End of the Page -->
+        <div class="max-w-lg mx-auto w-full mt-2">
+          <details class="group bg-white rounded-[24px] border-4 border-amber-300 shadow-md overflow-hidden transition-all duration-300">
+            <summary class="flex items-center justify-between p-4 font-black text-slate-800 uppercase tracking-tight text-sm md:text-base cursor-pointer select-none hover:bg-amber-50 active:bg-amber-100 list-none [&::-webkit-details-marker]:hidden">
+              <span class="flex items-center gap-2">⚙️ Помощници и настройки</span>
+              <span class="transition-transform duration-300 group-open:rotate-180">▼</span>
+            </summary>
+            <div class="p-5 border-t-4 border-amber-300 flex flex-col gap-5 bg-slate-50/50">
+              <!-- Help Hint Button -->
+              <div class="flex items-center justify-between gap-4 p-3 bg-white border border-slate-200 rounded-2xl shadow-sm">
+                <div>
+                  <h4 class="font-black text-slate-800 text-xs md:text-sm">Търсиш отговор?</h4>
+                  <p class="text-slate-500 text-[11px] md:text-xs">Умко ще попълни едно вярно животно за теб!</p>
+                </div>
+                <button 
+                  id="btn-asd-hint" 
+                  class="px-4 py-2.5 bg-amber-400 hover:bg-amber-500 active:scale-95 text-slate-900 font-black text-xs rounded-xl border-2 border-slate-800 cursor-pointer shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all flex items-center gap-1 select-none"
+                  ${hintCount <= 0 ? "disabled class='opacity-50 cursor-not-allowed'" : ""}
+                >
+                  <span id="btn-asd-hint-label">💡 Подсказка (${hintCount})</span>
+                </button>
+              </div>
+
+              <!-- Errors Toggle -->
+              <label class="flex items-center justify-between gap-4 p-3 bg-white border border-slate-200 rounded-2xl cursor-pointer select-none shadow-sm">
+                <div>
+                  <h4 class="font-black text-slate-800 text-xs md:text-sm">Показвай грешките</h4>
+                  <p class="text-slate-500 text-[11px] md:text-xs">Грешно поставените животни ще се оцветят в червено.</p>
+                </div>
+                <div class="relative inline-block w-11 h-6">
+                  <input type="checkbox" id="toggle-asd-errors" class="peer sr-only" ${showErrors ? "checked" : ""}>
+                  <div class="w-11 h-6 bg-slate-200 rounded-full peer-checked:bg-emerald-500 transition-all after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-5"></div>
+                </div>
+              </label>
+
+              <!-- Prompt on how to play -->
+              <div class="p-4 bg-amber-50 rounded-2xl border-2 border-amber-200 flex items-start gap-2.5">
+                <span class="text-lg">⭐</span>
+                <p class="text-[11px] md:text-xs text-amber-800 leading-relaxed font-bold">
+                  <strong>Как се играе:</strong> Избери празна клетка вляво, след това натисни някое от животните отдолу, за да го поставиш. Животните не трябва да се повтарят в един и същ ред, колона или блок!
+                </p>
+              </div>
+            </div>
+          </details>
+        </div>
+      </div>
+
+      <!-- Confirmation Modal -->
+      <div id="asd-confirm-modal" class="hidden fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-[40px] p-8 max-w-sm w-full text-center border-8 border-amber-400 shadow-2xl animate-fade-in">
+          <span class="text-5xl block mb-3">🤔</span>
+          <h3 class="text-2xl font-black text-slate-800 uppercase tracking-tight mb-2">Нова игра?</h3>
+          <p class="text-slate-600 text-xs font-bold leading-relaxed mb-6">
+            Сигурен ли си, че искаш да започнеш нова игра? Сегашният ти напредък ще се изгуби!
+          </p>
+          <div class="flex gap-3">
+            <button id="btn-asd-confirm-yes" class="flex-1 py-3 bg-[#F59E0B] hover:bg-[#D97706] active:scale-95 text-white font-black rounded-2xl border-2 border-slate-800 cursor-pointer shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all">
+              Да, давай!
+            </button>
+            <button id="btn-asd-confirm-no" class="flex-1 py-3 bg-[#EDF2F7] hover:bg-slate-200 text-[#2D3748] border-2 border-[#CBD5E0] font-black rounded-2xl cursor-pointer">
+              Остани
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+
+    // Apply initial highlighting
+    updateGridDisplay();
+
+    // Initialize the Unified Input Panel
+    if (window.UmnikInputPanel) {
+      window.UmnikInputPanel.init("unified-input-panel-container", "animalsudoku");
+    }
+
+    // Attach Event Listeners
+    attachEventListeners(containerId);
+  };
+
+  const attachEventListeners = (containerId) => {
+    // 1. Back button
+    document.getElementById("btn-asd-back").addEventListener("click", () => {
+      if (window.UmnikAudio) window.UmnikAudio.playPop();
+      if (window.UmnikApp) window.UmnikApp.goBack();
+    });
+
+    // 2. Regenerate button
+    document.getElementById("btn-asd-regenerate").addEventListener("click", () => {
+      if (window.UmnikAudio) window.UmnikAudio.playPop();
+      document.getElementById("asd-confirm-modal").classList.remove("hidden");
+    });
+
+    // 3. Confirm modal "No"
+    document.getElementById("btn-asd-confirm-no").addEventListener("click", () => {
+      if (window.UmnikAudio) window.UmnikAudio.playPop();
+      document.getElementById("asd-confirm-modal").classList.add("hidden");
+    });
+
+    // 4. Confirm modal "Yes"
+    document.getElementById("btn-asd-confirm-yes").addEventListener("click", () => {
+      if (window.UmnikAudio) window.UmnikAudio.playPop();
+      document.getElementById("asd-confirm-modal").classList.add("hidden");
+      init(containerId, activeDifficulty);
+    });
+
+    // 5. Grid Cell Click
+    const cells = document.querySelectorAll(".asd-cell-box");
+    cells.forEach(cell => {
+      cell.addEventListener("click", () => {
+        const row = parseInt(cell.dataset.row);
+        const col = parseInt(cell.dataset.col);
+        
+        if (window.UmnikAudio) window.UmnikAudio.playPop();
+        selectedCell = { row, col };
+        updateGridDisplay();
+      });
+    });
+
+    // 6. Key Click Selection
+    const keys = document.querySelectorAll(".asd-pad-key");
+    keys.forEach(key => {
+      key.addEventListener("click", () => {
+        const val = parseInt(key.dataset.val);
+        setCellValue(val);
+      });
+    });
+
+    // 7. Hint Click
+    document.getElementById("btn-asd-hint").addEventListener("click", () => {
+      triggerHint();
+    });
+
+    // 8. Errors Switch
+    document.getElementById("toggle-asd-errors").addEventListener("change", (e) => {
+      if (window.UmnikAudio) window.UmnikAudio.playPop();
+      showErrors = e.target.checked;
+      updateGridDisplay();
+    });
+
+    // 9. Keyboard controls (1-size and backspace/delete/0)
+    const handleKeyDown = (e) => {
+      if (selectedCell.row === -1 || selectedCell.col === -1) return;
+      if (isCellImmutable(selectedCell.row, selectedCell.col)) return;
+
+      const numVal = parseInt(e.key);
+      if (!isNaN(numVal) && numVal >= 1 && numVal <= activePuzzle.size) {
+        e.preventDefault();
+        setCellValue(numVal);
+      } else if (e.key === "Backspace" || e.key === "Delete" || e.key === "0") {
+        e.preventDefault();
+        setCellValue(0);
+      }
+    };
+
+    window._asdKeyListener = handleKeyDown;
+    window.addEventListener("keydown", handleKeyDown);
+  };
+
+  const destroy = () => {
+    if (window._asdKeyListener) {
+      window.removeEventListener("keydown", window._asdKeyListener);
+      delete window._asdKeyListener;
+    }
+  };
+
+  return {
+    init,
+    destroy,
+    setCellValue,
+    deleteCellValue: () => setCellValue(0),
+    getActivePuzzle: () => activePuzzle
+  };
+})();
+
+// Assign globally
+window.UmnikAnimalSudoku = UmnikAnimalSudoku;

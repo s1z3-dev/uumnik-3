@@ -1,0 +1,8 @@
+{
+  "name": "Remix: Умник",
+  "description": "Образователни игри за деца: Кръстословица, Судоку и Математически тренажор",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

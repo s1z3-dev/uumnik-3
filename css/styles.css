@@ -1,0 +1,118 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Comfortaa", "Pangolin", "Montserrat", "Inter", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", "Fira Code", monospace;
+}
+
+/* Global body overrides for Geometric Balance theme */
+body {
+  background-color: #FFFBEB !important;
+  color: #2D3748;
+}
+
+/* Custom child-friendly tactile shadows and animation effects */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20%, 60% { transform: translateX(-6px); }
+  40%, 80% { transform: translateX(6px); }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-shake {
+  animation: shake 0.4s ease-in-out;
+}
+
+/* Touch targets optimized for small kids' fingers */
+.touch-target {
+  min-height: 48px;
+  min-width: 48px;
+}
+
+/* Ensure nice smooth scroll on clues / badges */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Geometric Balance Custom Theme Utility Classes */
+.geo-bg-ivory {
+  background-color: #FFFBEB;
+}
+
+.geo-border-yellow {
+  border-color: #FBBF24;
+}
+
+.geo-text-amber {
+  color: #F59E0B;
+}
+
+.geo-bg-amber-light {
+  background-color: #FEF3C7;
+}
+
+.geo-border-blue {
+  border-color: #3B82F6;
+}
+
+.geo-bg-blue-light {
+  background-color: #DBEAFE;
+}
+
+.geo-border-green {
+  border-color: #10B981;
+}
+
+.geo-bg-green-light {
+  background-color: #F0FDF4;
+}
+
+.geo-text-green-dark {
+  color: #065F46;
+}
+
+.geo-border-slate {
+  border-color: #CBD5E0;
+}
+
+/* Neobrutalist tactile card and button shadows */
+.geo-shadow-tactile {
+  box-shadow: 4px 4px 0px 0px rgba(45, 55, 72, 0.1);
+}
+
+.geo-shadow-tactile-lg {
+  box-shadow: 6px 6px 0px 0px rgba(45, 55, 72, 0.15);
+}
+
+.geo-btn-active:active {
+  transform: translate(2px, 2px);
+  box-shadow: 2px 2px 0px 0px rgba(45, 55, 72, 0.1);
+}

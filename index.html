@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="bg">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>Умник — Образователни игри за деца</title>
+    
+    <!-- Google Fonts for children layout with Cyrillic support -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Comfortaa:wght@400;700&family=Pangolin&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+    
+    <!-- Custom Style Sheet -->
+    <link rel="stylesheet" href="css/styles.css" />
+
+    <!-- Tailwind Play CDN for 100% immediate double-click local compatibility -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            fontFamily: {
+              sans: ["Comfortaa", "Pangolin", "Montserrat", "Inter", "system-ui", "sans-serif"],
+              mono: ["JetBrains Mono", "Fira Code", "monospace"]
+            }
+          }
+        }
+      }
+    </script>
+  </head>
+  <body class="bg-slate-50 text-slate-800">
+    <!-- Main view container -->
+    <div id="umnik-app-root"></div>
+
+    <!-- ------------------------------------------------------------ -->
+    <!-- MODULAR SCRIPTS LOADER -->
+    <!-- ------------------------------------------------------------ -->
+    <!-- Safe storage manager -->
+    <script src="js/storage.js"></script>
+    <!-- Web Audio API sound effect generator -->
+    <script src="js/audio.js"></script>
+    <!-- Crosswords, Sudoku and Math configuration database -->
+    <script src="js/data/puzzles-bg.js"></script>
+    <!-- Educational guides (Mascots) and their SVGs -->
+    <script src="js/characters.js"></script>
+    <!-- Child profiles, stars, and badge progression system -->
+    <script src="js/progress.js"></script>
+    <!-- Game Engine: Crosswords (Кръстословица) -->
+    <script src="js/games/crossword.js"></script>
+    <!-- Game Engine: Sudoku (Судоку) -->
+    <script src="js/games/sudoku.js"></script>
+    <!-- Game Engine: Animal Sudoku (Судоку с Животни) -->
+    <script src="js/games/animalsudoku.js"></script>
+    <!-- Game Engine: Math Trainer (Математически тренажор) -->
+    <script src="js/games/math.js"></script>
+    <!-- Unified Kids Input Panel (Letters, Numbers, Emojis, Calculator) -->
+    <script src="js/games/inputpanel.js"></script>
+    <!-- Central games register -->
+    <script src="js/games/registry.js"></script>
+    <!-- Core Application router and state management -->
+    <script src="js/app.js"></script>
+  </body>
+</html>
